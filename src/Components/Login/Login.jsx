@@ -1,8 +1,17 @@
 import React, { useState } from 'react';
 
-// أيقونات SVG نظيفة ومباشرة
+// أيقونات SVG باستخدام كلاسات بوتستراب
 const AtomIcon = () => (
-  <svg style={{ width: 34, height: 34, color: '#090d16' }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+  <svg 
+    className="text-white" 
+    style={{ width: '32px', height: '32px' }} 
+    viewBox="0 0 24 24" 
+    fill="none" 
+    stroke="currentColor" 
+    strokeWidth="2.2" 
+    strokeLinecap="round" 
+    strokeLinejoin="round"
+  >
     <circle cx="12" cy="12" r="2" fill="currentColor"/>
     <ellipse cx="12" cy="12" rx="10" ry="4" transform="rotate(0 12 12)"/>
     <ellipse cx="12" cy="12" rx="10" ry="4" transform="rotate(60 12 12)"/>
@@ -11,7 +20,14 @@ const AtomIcon = () => (
 );
 
 const ShieldIcon = () => (
-  <svg style={{ width: 22, height: 22, color: '#818cf8', flexShrink: 0, marginTop: 2 }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+  <svg 
+    className="text-primary flex-shrink-0 mt-1" 
+    style={{ width: '22px', height: '22px' }} 
+    viewBox="0 0 24 24" 
+    fill="none" 
+    stroke="currentColor" 
+    strokeWidth="2"
+  >
     <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
     <path d="m9 12 2 2 4-4"/>
   </svg>
@@ -124,16 +140,19 @@ export default function Auth({ onAuthSuccess }) {
   };
 
   return (
-    <div dir="rtl" style={styles.container}>
-      <div style={styles.card}>
+    <div dir="rtl" className="min-vh-100 d-flex align-items-center justify-content-center bg-light py-5 px-3">
+      <div className="card shadow-sm border rounded-4 w-100 p-4 p-md-5" style={{ maxWidth: '640px' }}>
         
         {/* اللوجو والعنوان */}
-        <div style={styles.header}>
-          <div style={styles.logoBadge}>
+        <div className="text-center mb-4">
+          <div 
+            className="d-inline-flex align-items-center justify-content-center bg-primary rounded-4 shadow-sm mb-3" 
+            style={{ width: '64px', height: '64px' }}
+          >
             <AtomIcon />
           </div>
-          <h1 style={styles.title}>منصة فيزياء المستقبل</h1>
-          <p style={styles.subtitle}>
+          <h1 className="h3 fw-bold text-dark mb-2">منصة فيزياء المستقبل</h1>
+          <p className="text-secondary small mb-0 lh-base">
             {mode === 'login'
               ? 'سجل دخولك لمتابعة المحاضرات، الكويزات، وحصص البث المباشر'
               : 'أنشئ حسابك الجديد وانضم لرحلة التفوق في مادة الفيزياء'}
@@ -141,105 +160,120 @@ export default function Auth({ onAuthSuccess }) {
         </div>
 
         {/* أزرار التبديل العلوية */}
-        <div style={styles.modeTabs}>
-          <button
-            type="button"
-            onClick={() => { setMode('login'); setError(''); }}
-            style={{ ...styles.modeBtn, ...(mode === 'login' ? styles.activeModeBtn : {}) }}
-          >
-            تسجيل الدخول
-          </button>
-          <button
-            type="button"
-            onClick={() => { setMode('register'); setError(''); }}
-            style={{ ...styles.modeBtn, ...(mode === 'register' ? styles.activeModeBtn : {}) }}
-          >
-            إنشاء حساب جديد
-          </button>
+        <div className="row g-2 bg-light p-1 rounded-3 border mb-4">
+          <div className="col-6">
+            <button
+              type="button"
+              onClick={() => { setMode('login'); setError(''); }}
+              className={`btn w-100 py-2 fw-bold rounded-3 ${
+                mode === 'login' ? 'btn-white bg-white text-primary shadow-sm' : 'text-secondary border-0'
+              }`}
+            >
+              تسجيل الدخول
+            </button>
+          </div>
+          <div className="col-6">
+            <button
+              type="button"
+              onClick={() => { setMode('register'); setError(''); }}
+              className={`btn w-100 py-2 fw-bold rounded-3 ${
+                mode === 'register' ? 'btn-white bg-white text-primary shadow-sm' : 'text-secondary border-0'
+              }`}
+            >
+              إنشاء حساب جديد
+            </button>
+          </div>
         </div>
 
         {/* صندوق الخطأ */}
-        {error && <div style={styles.errorBox}>{error}</div>}
+        {error && (
+          <div className="alert alert-danger py-2 px-3 rounded-3 small mb-4 lh-base" role="alert">
+            {error}
+          </div>
+        )}
 
         {/* ================= فورم تسجيل الدخول ================= */}
         {mode === 'login' ? (
           <>
-            <div style={styles.roleTabs}>
+            <div className="row g-2 bg-light p-1 rounded-3 border mb-4">
               {[
                 { id: 'student', label: 'طالب' },
                 { id: 'parent', label: 'ولي أمر' },
-                { id: 'assistant', label: 'مساعد' },
               ].map((item) => (
-                <button
-                  key={item.id}
-                  type="button"
-                  onClick={() => { setRole(item.id); setError(''); }}
-                  style={{ ...styles.roleBtn, ...(role === item.id ? styles.activeRoleBtn : {}) }}
-                >
-                  {item.label}
-                </button>
+                <div key={item.id} className="col-6">
+                  <button
+                    type="button"
+                    onClick={() => { setRole(item.id); setError(''); }}
+                    className={`btn w-100 py-2 fw-bold rounded-3 ${
+                      role === item.id ? 'btn-primary shadow-sm' : 'text-secondary border-0'
+                    }`}
+                  >
+                    {item.label}
+                  </button>
+                </div>
               ))}
             </div>
 
-            <form onSubmit={handleLoginSubmit} style={styles.form}>
-              <div style={styles.formGroup}>
-                <label style={styles.label}>رقم الهاتف المسجل</label>
+            <form onSubmit={handleLoginSubmit} className="d-flex flex-column gap-3">
+              <div>
+                <label className="form-label small fw-bold text-secondary mb-1">رقم الهاتف المسجل</label>
                 <input
                   type="tel"
                   placeholder="مثال: ٠١٠١٢٣٤٥٦٧٨"
                   value={loginPhone}
                   onChange={(e) => setLoginPhone(e.target.value)}
-                  style={styles.input}
+                  className="form-control form-control-lg fs-6 rounded-3"
                 />
               </div>
 
-              <div style={styles.formGroup}>
-                <div style={styles.passHeader}>
-                  <label style={styles.label}>كلمة المرور</label>
-                  <a href="#forgot" style={styles.forgotLink}>نسيت كلمة المرور؟</a>
+              <div>
+                <div className="d-flex justify-content-between align-items-center mb-1">
+                  <label className="form-label small fw-bold text-secondary mb-0">كلمة المرور</label>
+                  <a href="#forgot" className="small text-primary text-decoration-none fw-semibold">نسيت كلمة المرور؟</a>
                 </div>
                 
-                {/* حقل كلمة المرور بزر مستقل لمنع التداخل */}
-                <div style={styles.passInputContainer}>
+                <div className="input-group">
                   <input
                     type={showLoginPass ? 'text' : 'password'}
                     placeholder="أدخل كلمة المرور"
                     value={loginPassword}
                     onChange={(e) => setLoginPassword(e.target.value)}
-                    style={styles.innerInput}
+                    className="form-control form-control-lg fs-6 rounded-start-3 rounded-end-0 border-end-0"
                   />
                   <button
                     type="button"
                     onClick={() => setShowLoginPass(!showLoginPass)}
-                    style={styles.toggleBtn}
+                    className="btn btn-outline-secondary border-start-0 rounded-end-3 rounded-start-0 px-3 fw-bold small"
                   >
                     {showLoginPass ? 'إخفاء' : 'إظهار'}
                   </button>
                 </div>
               </div>
 
-              <div style={styles.checkWrapper}>
+              <div className="form-check d-flex align-items-center gap-2">
                 <input
                   type="checkbox"
                   id="remember"
                   checked={rememberMe}
                   onChange={(e) => setRememberMe(e.target.checked)}
-                  style={styles.checkbox}
+                  className="form-check-input m-0"
                 />
-                <label htmlFor="remember" style={styles.checkLabel}>تذكر تسجيل دخولي على هذا الجهاز</label>
+                <label htmlFor="remember" className="form-check-label small text-muted">
+                  تذكر تسجيل دخولي على هذا الجهاز
+                </label>
               </div>
 
-              <button type="submit" disabled={loading} style={styles.submitBtn}>
+              <button type="submit" disabled={loading} className="btn btn-primary btn-lg rounded-3 fw-bold shadow-sm mt-2">
                 {loading ? 'جاري التحقق...' : 'دخول إلى المنصة'}
               </button>
             </form>
 
-            <div style={styles.footerNote}>
+            <div className="text-center small text-secondary mt-3">
               ليس لديك حساب بعد؟{' '}
               <button
                 type="button"
                 onClick={() => { setMode('register'); setError(''); }}
-                style={styles.switchLink}
+                className="btn btn-link p-0 text-primary fw-bold text-decoration-underline small"
               >
                 اضغط هنا لإنشاء حساب جديد
               </button>
@@ -247,50 +281,50 @@ export default function Auth({ onAuthSuccess }) {
           </>
         ) : (
           /* ================= فورم إنشاء حساب جديد ================= */
-          <form onSubmit={handleRegisterSubmit} style={styles.form}>
+          <form onSubmit={handleRegisterSubmit} className="d-flex flex-column gap-3">
             
-            <div style={styles.formGroup}>
-              <label style={styles.label}>اسم الطالب (ثلاثي أو رباعي) *</label>
+            <div>
+              <label className="form-label small fw-bold text-secondary mb-1">اسم الطالب (ثلاثي أو رباعي) *</label>
               <input
                 type="text"
                 placeholder="مثال: أحمد محمد علي حسن"
                 value={formData.fullName}
                 onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
-                style={styles.input}
+                className="form-control form-control-lg fs-6 rounded-3"
               />
             </div>
 
-            <div style={styles.twoCols}>
-              <div style={styles.formGroup}>
-                <label style={styles.label}>رقم هاتف الطالب *</label>
+            <div className="row g-3">
+              <div className="col-12 col-md-6">
+                <label className="form-label small fw-bold text-secondary mb-1">رقم هاتف الطالب *</label>
                 <input
                   type="tel"
                   placeholder="مثال: ٠١٠xxxxxxxx"
                   value={formData.studentPhone}
                   onChange={(e) => setFormData({ ...formData, studentPhone: e.target.value })}
-                  style={styles.input}
+                  className="form-control form-control-lg fs-6 rounded-3"
                 />
               </div>
 
-              <div style={styles.formGroup}>
-                <label style={styles.label}>رقم هاتف ولي الأمر *</label>
+              <div className="col-12 col-md-6">
+                <label className="form-label small fw-bold text-secondary mb-1">رقم هاتف ولي الأمر *</label>
                 <input
                   type="tel"
                   placeholder="مثال: ٠١١xxxxxxxx"
                   value={formData.parentPhone}
                   onChange={(e) => setFormData({ ...formData, parentPhone: e.target.value })}
-                  style={styles.input}
+                  className="form-control form-control-lg fs-6 rounded-3"
                 />
               </div>
             </div>
 
-            <div style={styles.twoCols}>
-              <div style={styles.formGroup}>
-                <label style={styles.label}>الصف الدراسي *</label>
+            <div className="row g-3">
+              <div className="col-12 col-md-6">
+                <label className="form-label small fw-bold text-secondary mb-1">الصف الدراسي *</label>
                 <select
                   value={formData.grade}
                   onChange={(e) => setFormData({ ...formData, grade: e.target.value })}
-                  style={styles.select}
+                  className="form-select form-select-lg fs-6 rounded-3"
                 >
                   <option value="الصف الأول الثانوي">الصف الأول الثانوي</option>
                   <option value="الصف الثاني الثانوي">الصف الثاني الثانوي</option>
@@ -298,12 +332,12 @@ export default function Auth({ onAuthSuccess }) {
                 </select>
               </div>
 
-              <div style={styles.formGroup}>
-                <label style={styles.label}>المحافظة *</label>
+              <div className="col-12 col-md-6">
+                <label className="form-label small fw-bold text-secondary mb-1">المحافظة *</label>
                 <select
                   value={formData.governorate}
                   onChange={(e) => setFormData({ ...formData, governorate: e.target.value })}
-                  style={styles.select}
+                  className="form-select form-select-lg fs-6 rounded-3"
                 >
                   {['القاهرة', 'الجيزة', 'الإسكندرية', 'الدقهلية', 'الشرقية', 'المنوفية', 'القليوبية', 'البحيرة', 'الغربية', 'كفر الشيخ', 'دمياط', 'بورسعيد', 'الإسماعيلية', 'السويس', 'بني سويف', 'الفيوم', 'المنيا', 'أسيوط', 'سوهاج', 'قنا', 'الأقصر', 'أسوان', 'أخرى'].map((gov) => (
                     <option key={gov} value={gov}>{gov}</option>
@@ -312,41 +346,41 @@ export default function Auth({ onAuthSuccess }) {
               </div>
             </div>
 
-            <div style={styles.twoCols}>
-              <div style={styles.formGroup}>
-                <label style={styles.label}>كلمة المرور *</label>
-                <div style={styles.passInputContainer}>
+            <div className="row g-3">
+              <div className="col-12 col-md-6">
+                <label className="form-label small fw-bold text-secondary mb-1">كلمة المرور *</label>
+                <div className="input-group">
                   <input
                     type={showRegPass ? 'text' : 'password'}
                     placeholder="لا تقل عن ٦ خانات"
                     value={formData.password}
                     onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                    style={styles.innerInput}
+                    className="form-control form-control-lg fs-6 rounded-start-3 rounded-end-0 border-end-0"
                   />
                   <button
                     type="button"
                     onClick={() => setShowRegPass(!showRegPass)}
-                    style={styles.toggleBtn}
+                    className="btn btn-outline-secondary border-start-0 rounded-end-3 rounded-start-0 px-3 fw-bold small"
                   >
                     {showRegPass ? 'إخفاء' : 'إظهار'}
                   </button>
                 </div>
               </div>
 
-              <div style={styles.formGroup}>
-                <label style={styles.label}>تأكيد كلمة المرور *</label>
-                <div style={styles.passInputContainer}>
+              <div className="col-12 col-md-6">
+                <label className="form-label small fw-bold text-secondary mb-1">تأكيد كلمة المرور *</label>
+                <div className="input-group">
                   <input
                     type={showConfirmPass ? 'text' : 'password'}
                     placeholder="أعد إدخال كلمة المرور"
                     value={formData.confirmPassword}
                     onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
-                    style={styles.innerInput}
+                    className="form-control form-control-lg fs-6 rounded-start-3 rounded-end-0 border-end-0"
                   />
                   <button
                     type="button"
                     onClick={() => setShowConfirmPass(!showConfirmPass)}
-                    style={styles.toggleBtn}
+                    className="btn btn-outline-secondary border-start-0 rounded-end-3 rounded-start-0 px-3 fw-bold small"
                   >
                     {showConfirmPass ? 'إخفاء' : 'إظهار'}
                   </button>
@@ -354,16 +388,16 @@ export default function Auth({ onAuthSuccess }) {
               </div>
             </div>
 
-            <button type="submit" disabled={loading} style={styles.submitBtn}>
+            <button type="submit" disabled={loading} className="btn btn-primary btn-lg rounded-3 fw-bold shadow-sm mt-2">
               {loading ? 'جاري إنشاء الحساب...' : 'تأكيد التسجيل وإنشاء الحساب'}
             </button>
 
-            <div style={styles.footerNote}>
+            <div className="text-center small text-secondary mt-3">
               لديك حساب بالفعل؟{' '}
               <button
                 type="button"
                 onClick={() => { setMode('login'); setError(''); }}
-                style={styles.switchLink}
+                className="btn btn-link p-0 text-primary fw-bold text-decoration-underline small"
               >
                 تسجيل الدخول
               </button>
@@ -372,10 +406,10 @@ export default function Auth({ onAuthSuccess }) {
         )}
 
         {/* تنبيه الأمان */}
-        <div style={styles.securityBox}>
+        <div className="alert alert-info border-info-subtle bg-info-subtle d-flex gap-2 align-items-start rounded-4 mt-4 mb-0 py-3 px-3">
           <ShieldIcon />
-          <span>
-            <strong style={{ color: '#ffffff' }}>تنبيه أمان المنصة:</strong> يتم ربط الحساب بجهاز واحد فقط تلقائياً. يرجى التسجيل من جهازك الأساسي الذي ستعتمد عليه لحضور الحصص لتجنب إيقاف الحساب.
+          <span className="small text-info-emphasis lh-base">
+            <strong className="text-dark">تنبيه أمان المنصة:</strong> يتم ربط الحساب بجهاز واحد فقط تلقائياً. يرجى التسجيل من جهازك الأساسي الذي ستعتمد عليه لحضور الحصص لتجنب إيقاف الحساب.
           </span>
         </div>
 
@@ -383,261 +417,3 @@ export default function Auth({ onAuthSuccess }) {
     </div>
   );
 }
-
-const styles = {
-  container: {
-    minHeight: '100vh',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#f1f5f9', // خلفية رمادية فاتحة ونظيفة
-    padding: '30px 16px',
-    fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Cairo", sans-serif',
-  },
-  card: {
-    width: '100%',
-    maxWidth: '640px',
-    backgroundColor: '#ffffff', // كارت أبيض نقي
-    borderRadius: '28px',
-    border: '1.5px solid #e2e8f0',
-    padding: '40px 36px',
-    boxShadow: '0 20px 35px -10px rgba(15, 23, 42, 0.08), 0 1px 3px rgba(0, 0, 0, 0.05)',
-    color: '#0f172a',
-    boxSizing: 'border-box',
-  },
-  header: {
-    textAlign: 'center',
-    marginBottom: '26px',
-  },
-  logoBadge: {
-    display: 'inline-flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    width: '64px',
-    height: '64px',
-    borderRadius: '20px',
-    background: 'linear-gradient(135deg, #2563eb, #1d4ed8)', // أزرق تعليمي احترافي
-    boxShadow: '0 10px 20px rgba(37, 99, 235, 0.25)',
-    marginBottom: '14px',
-  },
-  title: {
-    fontSize: '26px',
-    fontWeight: '800',
-    margin: '0 0 6px 0',
-    color: '#0f172a', // كحلي غامق وواضح للقراءة
-  },
-  subtitle: {
-    fontSize: '14px',
-    color: '#64748b',
-    margin: 0,
-    lineHeight: '1.6',
-  },
-  modeTabs: {
-    display: 'grid',
-    gridTemplateColumns: '1fr 1fr',
-    gap: '8px',
-    backgroundColor: '#f8fafc',
-    padding: '6px',
-    borderRadius: '16px',
-    border: '1.5px solid #e2e8f0',
-    marginBottom: '24px',
-  },
-  modeBtn: {
-    padding: '12px 0',
-    fontSize: '15px',
-    fontWeight: '700',
-    borderRadius: '12px',
-    border: 'none',
-    cursor: 'pointer',
-    backgroundColor: 'transparent',
-    color: '#64748b',
-    transition: 'all 0.2s',
-  },
-  activeModeBtn: {
-    backgroundColor: '#ffffff',
-    color: '#2563eb',
-    boxShadow: '0 4px 12px rgba(15, 23, 42, 0.06)',
-  },
-  roleTabs: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(3, 1fr)',
-    gap: '8px',
-    backgroundColor: '#f8fafc',
-    padding: '6px',
-    borderRadius: '16px',
-    border: '1.5px solid #e2e8f0',
-    marginBottom: '24px',
-  },
-  roleBtn: {
-    padding: '12px 0',
-    fontSize: '14px',
-    fontWeight: '700',
-    borderRadius: '10px',
-    border: 'none',
-    cursor: 'pointer',
-    backgroundColor: 'transparent',
-    color: '#64748b',
-    transition: 'all 0.2s',
-  },
-  activeRoleBtn: {
-    backgroundColor: '#2563eb',
-    color: '#ffffff',
-    boxShadow: '0 4px 12px rgba(37, 99, 235, 0.25)',
-  },
-  errorBox: {
-    padding: '12px 16px',
-    borderRadius: '12px',
-    backgroundColor: '#fef2f2',
-    border: '1.5px solid #fecaca',
-    color: '#dc2626',
-    fontSize: '14px',
-    marginBottom: '20px',
-    lineHeight: 1.6,
-  },
-  form: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '18px',
-  },
-  twoCols: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
-    gap: '16px',
-  },
-  formGroup: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '6px',
-  },
-  label: {
-    fontSize: '13px',
-    fontWeight: '700',
-    color: '#334155',
-  },
-  input: {
-    width: '100%',
-    padding: '14px 16px',
-    borderRadius: '14px',
-    border: '1.5px solid #cbd5e1',
-    backgroundColor: '#f8fafc',
-    color: '#0f172a',
-    fontSize: '15px',
-    outline: 'none',
-    boxSizing: 'border-box',
-    textAlign: 'right',
-    transition: 'border-color 0.2s, background-color 0.2s',
-  },
-  passInputContainer: {
-    display: 'flex',
-    alignItems: 'center',
-    backgroundColor: '#f8fafc',
-    border: '1.5px solid #cbd5e1',
-    borderRadius: '14px',
-    padding: '0 12px',
-    boxSizing: 'border-box',
-  },
-  innerInput: {
-    flex: 1,
-    padding: '14px 0',
-    backgroundColor: 'transparent',
-    border: 'none',
-    color: '#0f172a',
-    fontSize: '15px',
-    outline: 'none',
-    boxSizing: 'border-box',
-    textAlign: 'right',
-  },
-  toggleBtn: {
-    background: '#e2e8f0',
-    border: 'none',
-    color: '#1e293b',
-    fontWeight: '700',
-    fontSize: '12px',
-    padding: '6px 12px',
-    borderRadius: '8px',
-    cursor: 'pointer',
-    flexShrink: 0,
-    marginRight: '8px',
-    transition: 'background 0.2s',
-  },
-  select: {
-    width: '100%',
-    padding: '14px 16px',
-    borderRadius: '14px',
-    border: '1.5px solid #cbd5e1',
-    backgroundColor: '#f8fafc',
-    color: '#0f172a',
-    fontSize: '15px',
-    outline: 'none',
-    cursor: 'pointer',
-    boxSizing: 'border-box',
-  },
-  passHeader: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  forgotLink: {
-    fontSize: '13px',
-    color: '#2563eb',
-    textDecoration: 'none',
-    fontWeight: '600',
-  },
-  checkWrapper: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '8px',
-  },
-  checkbox: {
-    width: '18px',
-    height: '18px',
-    accentColor: '#2563eb',
-    cursor: 'pointer',
-  },
-  checkLabel: {
-    fontSize: '13px',
-    color: '#475569',
-    cursor: 'pointer',
-  },
-  submitBtn: {
-    marginTop: '6px',
-    padding: '15px',
-    borderRadius: '14px',
-    border: 'none',
-    background: 'linear-gradient(135deg, #2563eb, #1d4ed8)',
-    color: '#ffffff',
-    fontSize: '16px',
-    fontWeight: '800',
-    cursor: 'pointer',
-    boxShadow: '0 8px 18px rgba(37, 99, 235, 0.25)',
-  },
-  footerNote: {
-    marginTop: '10px',
-    textAlign: 'center',
-    fontSize: '14px',
-    color: '#64748b',
-  },
-  switchLink: {
-    background: 'none',
-    border: 'none',
-    color: '#2563eb',
-    fontWeight: '700',
-    fontSize: '14px',
-    cursor: 'pointer',
-    textDecoration: 'underline',
-    padding: 0,
-  },
-  securityBox: {
-    marginTop: '26px',
-    padding: '14px 16px',
-    borderRadius: '16px',
-    backgroundColor: '#eff6ff', // أزرق سماوي ناعم ومريح
-    border: '1.5px solid #bfdbfe',
-    display: 'flex',
-    gap: '12px',
-    alignItems: 'flex-start',
-    fontSize: '13px',
-    color: '#1e40af',
-    lineHeight: '1.6',
-  },
-};
