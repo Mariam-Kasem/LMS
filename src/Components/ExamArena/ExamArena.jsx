@@ -1,13 +1,14 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 
-// قائمة الامتحانات (المفتوحة، المغلقة بميعاد، أو المكتملة)
+// قائمة الامتحانات المتاحة والمغلقة
 const EXAMS_DATABASE = [
   {
     id: 'exam-1',
     title: 'امتحان الفيزياء الدوري • قوانين الدوائر الكهربية',
     topic: 'الفصل الأول: التيار الكهربي وقانون أوم',
     durationMinutes: 10,
-    status: 'open', // 'open' | 'locked'
+    status: 'open',
     unlockDate: 'متاح الآن',
     questions: [
       {
@@ -54,11 +55,18 @@ const EXAMS_DATABASE = [
 ];
 
 export default function ExamArena({ onExit }) {
+  const navigate = useNavigate();
+
   const [activeExam, setActiveExam] = useState(null);
   const [timeLeft, setTimeLeft] = useState(0);
   const [selectedAnswers, setSelectedAnswers] = useState({});
   const [isSubmitted, setIsSubmitted] = useState(false);
-  const [examScores, setExamScores] = useState({}); // لحفظ درجات الطالب بعد التسليم
+
+  // استرجاع الدرجات السابقة من التخزين المحلي
+  const [examScores, setExamScores] = useState(() => {
+    const saved = localStorage.getItem('physics_exam_scores');
+    return saved ? JSON.parse(saved) : {};
+  });
 
   // بدء امتحان محدد
   const handleStartExam = (exam) => {
@@ -107,15 +115,34 @@ export default function ExamArena({ onExit }) {
 
   const handleSubmit = () => {
     const finalScore = calculateScore();
-    setExamScores((prev) => ({
-      ...prev,
+    const newScores = {
+      ...examScores,
       [activeExam.id]: {
         score: finalScore,
         total: activeExam.questions.length,
       },
-    }));
+    };
+    setExamScores(newScores);
+    localStorage.setItem('physics_exam_scores', JSON.stringify(newScores));
     setIsSubmitted(true);
   };
+
+  // التعامل مع الرجوع الآمن
+  const handleSafeExit = () => {
+    if (activeExam && !isSubmitted) {
+      if (window.confirm('هل أنت متأكد من الخروج؟ سيتم إلغاء تقدمك في هذا الامتحان!')) {
+        setActiveExam(null);
+      }
+    } else if (activeExam && isSubmitted) {
+      setActiveExam(null);
+    } else {
+      if (onExit) onExit();
+      navigate('/home');
+    }
+  };
+
+  // عدد الأسئلة المجاب عنها
+  const answeredCount = Object.keys(selectedAnswers).length;
 
   // ================= 1. شاشة قائمة الامتحانات =================
   if (!activeExam) {
@@ -124,13 +151,13 @@ export default function ExamArena({ onExit }) {
         <div className="container" style={{ maxWidth: '850px' }}>
           
           <div className="card border-0 shadow-sm rounded-4 p-4 mb-4 bg-white">
-            <div className="d-flex justify-content-between align-items-center">
+            <div className="d-flex flex-wrap justify-content-between align-items-center gap-3">
               <div>
                 <h4 className="fw-bold mb-1 text-dark">📋 ساحة الاختبارات والتقييم الدوري</h4>
                 <p className="text-secondary small mb-0">اختر الاختبار المتاح لك للبدء فوراً، أو انتظر المواعيد المحددة للامتحانات المغلقة.</p>
               </div>
-              <button onClick={onExit} className="btn btn-outline-secondary btn-sm px-3 rounded-3">
-                رجوع للرئيسية
+              <button onClick={() => navigate('/home')} className="btn btn-outline-secondary btn-sm px-3 rounded-3 fw-bold">
+                ← العودة للرئيسية
               </button>
             </div>
           </div>
@@ -142,7 +169,7 @@ export default function ExamArena({ onExit }) {
 
               return (
                 <div key={exam.id} className="col-12">
-                  <div className={`card border-0 shadow-sm rounded-4 p-4 bg-white transition-all ${isLocked ? 'opacity-75' : ''}`}>
+                  <div className={`card border-0 shadow-sm rounded-4 p-4 bg-white ${isLocked ? 'opacity-75' : ''}`}>
                     <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
                       <div>
                         <div className="d-flex align-items-center gap-2 mb-2">
@@ -153,7 +180,7 @@ export default function ExamArena({ onExit }) {
                               ? 'bg-secondary-subtle text-secondary border border-secondary-subtle' 
                               : 'bg-primary-subtle text-primary border border-primary-subtle'
                           }`}>
-                            {completedData ? 'تم الانتهاء' : isLocked ? '🔒 مغلق مؤقتاً' : '⚡ متاح للبدء'}
+                            {completedData ? '✓ تم الانتهاء' : isLocked ? '🔒 مغلق مؤقتاً' : '⚡ متاح للبدء'}
                           </span>
                           <small className="text-muted">{exam.durationMinutes} دقيقة • {exam.questions.length || '—'} أسئلة</small>
                         </div>
@@ -169,7 +196,7 @@ export default function ExamArena({ onExit }) {
 
                         {completedData && (
                           <div className="small text-success fw-bold mt-2">
-                            درجتك: {completedData.score} من {completedData.total} ({Math.round((completedData.score / completedData.total) * 100)}%)
+                            أعلى نتيجة لك: {completedData.score} من {completedData.total} ({Math.round((completedData.score / completedData.total) * 100)}%)
                           </div>
                         )}
                       </div>
@@ -180,7 +207,7 @@ export default function ExamArena({ onExit }) {
                             onClick={() => handleStartExam(exam)}
                             className="btn btn-outline-primary px-4 py-2 rounded-3 fw-bold"
                           >
-                            مراجعة الإجابات
+                            إعادة المحاولة
                           </button>
                         ) : isLocked ? (
                           <button disabled className="btn btn-light border px-4 py-2 rounded-3 text-muted fw-bold">
@@ -213,11 +240,13 @@ export default function ExamArena({ onExit }) {
       <div className="container" style={{ maxWidth: '800px' }}>
         
         {/* رأس الامتحان والعداد */}
-        <div className="card border-0 shadow-sm rounded-4 p-3 mb-4 bg-white sticky-top">
+        <div className="card border-0 shadow-sm rounded-4 p-3 mb-3 bg-white sticky-top">
           <div className="d-flex justify-content-between align-items-center">
             <div>
               <h5 className="fw-bold mb-0">{activeExam.title}</h5>
-              <small className="text-muted">عدد الأسئلة: {activeExam.questions.length}</small>
+              <small className="text-muted">
+                تمت الإجابة عن: {answeredCount} من {activeExam.questions.length}
+              </small>
             </div>
             
             <div className="d-flex align-items-center gap-2">
@@ -226,11 +255,21 @@ export default function ExamArena({ onExit }) {
                   ⏱️ {formatTime(timeLeft)}
                 </div>
               )}
-              <button onClick={() => setActiveExam(null)} className="btn btn-outline-secondary btn-sm rounded-3">
-                قائمة الامتحانات
+              <button onClick={handleSafeExit} className="btn btn-outline-secondary btn-sm rounded-3">
+                خروج
               </button>
             </div>
           </div>
+
+          {/* شريط تقدم الحل */}
+          {!isSubmitted && (
+            <div className="progress mt-2" style={{ height: '6px' }}>
+              <div 
+                className="progress-bar bg-success" 
+                style={{ width: `${(answeredCount / activeExam.questions.length) * 100}%` }}
+              ></div>
+            </div>
+          )}
         </div>
 
         {/* كارت النتيجة بعد التسليم */}
@@ -240,7 +279,7 @@ export default function ExamArena({ onExit }) {
             <div className="display-5 fw-bold text-dark my-2">
               {calculateScore()} / {activeExam.questions.length}
             </div>
-            <p className="text-muted">النسبة المئوية: {Math.round((calculateScore() / activeExam.questions.length) * 100)}%</p>
+            <p className="text-muted mb-0">النسبة المئوية: {Math.round((calculateScore() / activeExam.questions.length) * 100)}%</p>
           </div>
         )}
 
@@ -288,7 +327,15 @@ export default function ExamArena({ onExit }) {
         {/* زر الإجراء */}
         {!isSubmitted ? (
           <button 
-            onClick={handleSubmit} 
+            onClick={() => {
+              if (answeredCount < activeExam.questions.length) {
+                if (window.confirm(`لم تجب عن جميع الأسئلة بعد (${answeredCount}/${activeExam.questions.length}). هل أنت متأكد من تسليم الإجابات؟`)) {
+                  handleSubmit();
+                }
+              } else {
+                handleSubmit();
+              }
+            }} 
             className="btn btn-primary w-100 py-3 fw-bold rounded-4 shadow-sm"
           >
             تسليم الإجابات وإنهاء الامتحان

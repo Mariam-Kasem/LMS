@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import axios from 'axios';
 
-// أيقونات SVG باستخدام كلاسات بوتستراب
+// أيقونات SVG
 const AtomIcon = () => (
   <svg 
     className="text-white" 
@@ -34,6 +36,8 @@ const ShieldIcon = () => (
 );
 
 export default function Auth({ onAuthSuccess }) {
+  const navigate = useNavigate();
+
   // التبديل بين تسجيل الدخول وإنشاء حساب
   const [mode, setMode] = useState('login'); // 'login' | 'register'
 
@@ -64,7 +68,7 @@ export default function Auth({ onAuthSuccess }) {
   const validatePhone = (num) => /^01[0125][0-9]{8}$/.test(num.trim());
 
   // معالجة تسجيل الدخول
-  const handleLoginSubmit = (e) => {
+const handleLoginSubmit = async (e) => {
     e.preventDefault();
     setError('');
 
@@ -78,22 +82,35 @@ export default function Auth({ onAuthSuccess }) {
     }
 
     setLoading(true);
-    setTimeout(() => {
-      setLoading(false);
+    try {
+      const response = await axios.post('http://localhost:5000/api/auth/login', {
+        phone: loginPhone,
+        password: loginPassword,
+      });
+
+      const userData = response.data;
+      // حفظ بيانات الطالب والـ Token في الـ LocalStorage للبقاء مسجلاً
+      localStorage.setItem('user', JSON.stringify(userData));
+      localStorage.setItem('token', userData.token);
+
       if (onAuthSuccess) {
-        onAuthSuccess({ phone: loginPhone, role, name: 'أحمد محمد' });
-      } else {
-        alert('تم تسجيل الدخول بنجاح!');
+        onAuthSuccess(userData);
       }
-    }, 1000);
+      navigate('/home');
+    } catch (err) {
+      const msg = err.response?.data?.message || 'تعذر تسجيل الدخول، يرجى التأكد من البيانات أو تشغيل السيرفر.';
+      setError(msg);
+    } finally {
+      setLoading(false);
+    }
   };
 
   // معالجة إنشاء الحساب
-  const handleRegisterSubmit = (e) => {
+ const handleRegisterSubmit = async (e) => {
     e.preventDefault();
     setError('');
 
-    const { fullName, studentPhone, parentPhone, password, confirmPassword } = formData;
+    const { fullName, studentPhone, parentPhone, grade, governorate, password, confirmPassword } = formData;
 
     if (!fullName || !studentPhone || !parentPhone || !password || !confirmPassword) {
       setError('يرجى ملء جميع الحقول المطلوبة.');
@@ -131,12 +148,34 @@ export default function Auth({ onAuthSuccess }) {
     }
 
     setLoading(true);
-    setTimeout(() => {
-      setLoading(false);
-      alert('تم إنشاء الحساب بنجاح! يمكنك الآن تسجيل الدخول.');
+    try {
+      await axios.post('http://localhost:5000/api/auth/register', {
+        name: fullName,
+        phone: studentPhone,
+        parentPhone,
+        grade,
+        governorate,
+        password,
+      });
+
+      alert('تم إنشاء الحساب بنجاح في قاعدة البيانات! يمكنك الآن تسجيل الدخول.');
       setMode('login');
       setLoginPhone(studentPhone);
-    }, 1200);
+      setFormData({
+        fullName: '',
+        studentPhone: '',
+        parentPhone: '',
+        grade: 'الصف الثالث الثانوي',
+        governorate: 'القاهرة',
+        password: '',
+        confirmPassword: '',
+      });
+    } catch (err) {
+      const msg = err.response?.data?.message || 'حدث خطأ أثناء إنشاء الحساب، تأكد من الاتصال بالسيرفر.';
+      setError(msg);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -229,7 +268,13 @@ export default function Auth({ onAuthSuccess }) {
               <div>
                 <div className="d-flex justify-content-between align-items-center mb-1">
                   <label className="form-label small fw-bold text-secondary mb-0">كلمة المرور</label>
-                  <a href="#forgot" className="small text-primary text-decoration-none fw-semibold">نسيت كلمة المرور؟</a>
+                  <button 
+                    type="button"
+                    onClick={() => alert('يرجى التواصل مع المساعد أو الدعم الفني لاستعادة كلمة المرور.')}
+                    className="btn btn-link p-0 small text-primary text-decoration-none fw-semibold"
+                  >
+                    نسيت كلمة المرور؟
+                  </button>
                 </div>
                 
                 <div className="input-group">

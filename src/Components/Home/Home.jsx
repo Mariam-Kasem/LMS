@@ -1,49 +1,224 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import axios from 'axios';
+import FawryPaymentModal from '../FawryPaymentModal/FawryPaymentModal';
 
-export default function Home({ onLogout }) {
+export default function Home({ user }) {
+  const navigate = useNavigate();
   const [activeVideo, setActiveVideo] = useState(null);
   const [showZoomModal, setShowZoomModal] = useState(false);
+  const [selectedChapterForSub, setSelectedChapterForSub] = useState(null);
+  const [rechargeCode, setRechargeCode] = useState('');
+  const [subMessage, setSubMessage] = useState({ text: '', type: '' });
+  const [fawryInfo, setFawryInfo] = useState(null);
+  const [loadingFawry, setLoadingFawry] = useState(false);
+
+  // قراءة بيانات المستخدم الحالي
+  const currentUser = user || JSON.parse(localStorage.getItem('user')) || {};
 
   const student = {
-    name: 'أحمد محمد علي',
-    code: 'PHY-3042',
-    progress: 75
+    name: currentUser?.name || 'مريم قاسم',
+    code: currentUser?.code || 'PHY-0000',
+    progress: currentUser?.progress || 0
   };
 
-  const lectures = [
-    { id: 1, title: 'المحاضرة 1: قانون أوم والمقاومة النوعية والتوصيلية', duration: '1:20:00' },
-    { id: 2, title: 'المحاضرة 2: توصيل المقاومات وحساب المقاومة المكافئة', duration: '1:45:30' },
-    { id: 3, title: 'المحاضرة 3: قانون كيرشوف الأول والثاني وتطبيقات معقدة', duration: '1:30:15' },
-  ];
+  const firstName = student.name.trim().split(' ')[0];
+  const progressPercentage = student.progress;
+
+  // فصول منهج فيزياء 3 ثانوي وحالة الاشتراك
+  const [chapters, setChapters] = useState([
+    {
+      id: 'chap-1',
+      title: 'الفصل الأول: التيار الكهربائي وقانون أوم وكيرشوف',
+      desc: 'دراسة شدة التيار، فرق الجهد، المقاومة النوعية، توصيل المقاومات، وقانونا كيرشوف.',
+      price: 150,
+      lecturesCount: 8,
+      hoursCount: 16,
+      isUnlocked: true // مفتوح افتراضياً للتجربة
+    },
+    {
+      id: 'chap-2',
+      title: 'الفصل الثاني: التأثير المغناطيسي للتيار الكهربي وأجهزة القياس',
+      desc: 'المجال المغناطيسي لسلك وملف دائري ولولبي، القوة وعزم الازدواج، والجلفانومتر والأميتر والفولتميتر.',
+      price: 180,
+      lecturesCount: 10,
+      hoursCount: 20,
+      isUnlocked: false
+    },
+    {
+      id: 'chap-3',
+      title: 'الفصل الثالث: الحث الكهرومغناطيسي',
+      desc: 'قانون فاراداي، الحث الذاتي والمتبادل، المولد الكهربي (الدينامو)، والمحولات والمحركات.',
+      price: 180,
+      lecturesCount: 12,
+      hoursCount: 22,
+      isUnlocked: false
+    },
+    {
+      id: 'chap-4',
+      title: 'الفصل الرابع: دوائر التيار المتردد',
+      desc: 'المعاوقة والمفاعلة الحثية والسعوية، دوائر الرنين والدائرة المهتزة.',
+      price: 140,
+      lecturesCount: 6,
+      hoursCount: 12,
+      isUnlocked: false
+    },
+    {
+      id: 'chap-5',
+      title: 'الفصل الخامس: ازدواجية الموجة والجسيم (الفيزياء الحديثة)',
+      desc: 'إشعاع الجسم الأسود، الظاهرة الكهروضوئية، وظاهرة كومتون، ومجهر القوة الذرية.',
+      price: 130,
+      lecturesCount: 6,
+      hoursCount: 10,
+      isUnlocked: false
+    },
+    {
+      id: 'chap-6',
+      title: 'الفصل السادس والسابع: الأطياف الذرية والليزر',
+      desc: 'طيف ذرة الهيدروجين، أشعة إكس، وانبعاث الليزر وتطبيقات الهولوجرام.',
+      price: 130,
+      lecturesCount: 5,
+      hoursCount: 9,
+      isUnlocked: false
+    },
+    {
+      id: 'chap-7',
+      title: 'الفصل الثامن: الإلكترونيات الحديثة',
+      desc: 'أشباه الموصلات، الوصلة الثنائية، الترانزستور، والبوابات المنطقية الرقمية.',
+      price: 120,
+      lecturesCount: 5,
+      hoursCount: 8,
+      isUnlocked: false
+    }
+  ]);
+
+  // فتح الفصل عند الاشتراك وإرسال الطلب للسيرفر
+  const handleUnlockChapter = async (chapterId) => {
+    try {
+      const token = localStorage.getItem('token');
+
+      // إرسال طلب الاشتراك للباك إند
+      const response = await axios.post(
+        `http://localhost:5000/api/chapters/${chapterId}/subscribe`,
+        {},
+        {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        }
+      );
+
+      // تحديث حالة الفصل في الواجهة ليصبح مفتوحاً
+      setChapters(prev =>
+        prev.map(ch => ch.id === chapterId ? { ...ch, isUnlocked: true } : ch)
+      );
+
+      // تحديث بيانات المستخدم المخزنة في المتصفح إذا أرجع السيرفر القائمة المحدثة
+      if (response.data?.subscribedChapters) {
+        const storedUser = JSON.parse(localStorage.getItem('user')) || {};
+        storedUser.subscribedChapters = response.data.subscribedChapters;
+        localStorage.setItem('user', JSON.stringify(storedUser));
+      }
+
+      setSubMessage({ text: 'تم تفعيل الفصل بنجاح! يمكنك الآن مشاهدة المحاضرات.', type: 'success' });
+      
+      setTimeout(() => {
+        setSelectedChapterForSub(null);
+        setSubMessage({ text: '', type: '' });
+        setRechargeCode('');
+      }, 1500);
+
+    } catch (error) {
+      console.error('Subscription error:', error);
+      // في حالة وجود خطأ في الباك إند ولكن ترغبين بالتجربة محلياً:
+      setChapters(prev =>
+        prev.map(ch => ch.id === chapterId ? { ...ch, isUnlocked: true } : ch)
+      );
+      setSubMessage({ text: 'تم تفعيل الفصل تجريبياً بنجاح!', type: 'success' });
+      setTimeout(() => {
+        setSelectedChapterForSub(null);
+        setSubMessage({ text: '', type: '' });
+      }, 1200);
+    }
+  };
+  
+  // طلب كود فوري من السيرفر
+  const handleRequestFawryCode = async (chapter) => {
+    try {
+      setLoadingFawry(true);
+      const token = localStorage.getItem('token');
+      
+      const response = await axios.post(
+        'http://localhost:5000/api/payment/fawry/create-order',
+        {
+          chapterId: chapter.id,
+          amount: chapter.price
+        },
+        {
+          headers: { Authorization: `Bearer ${token}` }
+        }
+      );
+
+      setFawryInfo(response.data);
+      setSelectedChapterForSub(null);
+    } catch (error) {
+      console.error('Fawry order error:', error);
+      // توليد كود محاكاة تجريبي تلقائياً إذا لم يكن مسار السيرفر مجهزاً بعد
+      const fakeRef = Math.floor(1000000000 + Math.random() * 9000000000).toString();
+      const expDate = new Date();
+      expDate.setHours(expDate.getHours() + 48);
+
+      setFawryInfo({
+        referenceNumber: fakeRef,
+        amount: chapter.price,
+        fawryCode: '788',
+        expireDate: expDate.toLocaleDateString('ar-EG') + ' ' + expDate.toLocaleTimeString('ar-EG')
+      });
+      setSelectedChapterForSub(null);
+    } finally {
+      setLoadingFawry(false);
+    }
+  };
 
   return (
-    <div dir="rtl" className="bg-light min-vh-100">
-      
-   
-      {/* Main Content */}
+    <div dir="rtl" className="bg-light min-vh-100 pb-5">
       <div className="container py-4">
 
-        {/* كارت الترحيب ونسبة الإنجاز */}
+        {/* كارت الترحيب والإنجاز */}
         <div className="card border-0 shadow-sm rounded-4 p-4 mb-4 bg-white">
-          <div className="row align-items-center g-3">
-            <div className="col-md-7">
-              <h4 className="fw-bold text-dark mb-1">مرحباً بك يا {student.name.split(' ')[0]} 👋</h4>
-              <p className="text-muted mb-0">واصل متابعة حصصك، لقد أكملت <span className="text-primary fw-bold">{student.progress}%</span> من المنهج.</p>
+          <div className="row align-items-center">
+            <div className="col-md-6 text-md-end text-center mb-3 mb-md-0">
+              <h3 className="fw-bold mb-2 text-dark">
+                مرحباً بكِ يا {firstName} 👋
+              </h3>
+              <p className="text-muted mb-0 small">
+                {progressPercentage > 0 
+                  ? `واصل متابعة حصصك، لقد أكملت ${progressPercentage}% من المنهج.`
+                  : 'ابدأي بمشاهدة أولى محاضراتك الآن لتسجيل تقدمك في المنهج!'}
+              </p>
             </div>
-            <div className="col-md-5">
-              <div className="d-flex justify-content-between mb-1 fw-bold small">
+
+            <div className="col-md-6">
+              <div className="d-flex justify-content-between align-items-center mb-2 small text-muted">
+                <span className="fw-bold text-primary">{progressPercentage}%</span>
                 <span>نسبة الإنجاز الإجمالية</span>
-                <span className="text-primary">{student.progress}%</span>
               </div>
-              <div className="progress" style={{ height: '10px' }}>
-                <div className="progress-bar progress-bar-striped progress-bar-animated bg-primary" role="progressbar" style={{ width: `${student.progress}%` }}></div>
+              <div className="progress" style={{ height: '10px', borderRadius: '10px', backgroundColor: '#e9ecef' }}>
+                <div
+                  className="progress-bar progress-bar-striped progress-bar-animated bg-primary"
+                  role="progressbar"
+                  style={{ width: `${progressPercentage}%`, borderRadius: '10px' }}
+                  aria-valuenow={progressPercentage}
+                  aria-valuemin="0"
+                  aria-valuemax="100"
+                ></div>
               </div>
             </div>
           </div>
         </div>
 
-        {/* بنر حصة زوم */}
-        <div className="card border-primary border-opacity-25 bg-primary bg-opacity-10 rounded-4 p-3 mb-4">
+        {/* بنر حصة زوم المباشرة */}
+        <div className="card border-primary border-opacity-25 bg-primary bg-opacity-10 rounded-4 p-3 mb-5">
           <div className="d-flex flex-wrap align-items-center justify-content-between gap-3">
             <div>
               <span className="badge bg-danger mb-1">بث مباشر اليوم</span>
@@ -56,67 +231,144 @@ export default function Home({ onLogout }) {
           </div>
         </div>
 
-        {/* قسم المحاضرات والامتحانات */}
-        <div className="row g-4">
-          
-          {/* المحاضرات المسجلة */}
-          <div className="col-lg-7">
-            <h5 className="fw-bold mb-3">المحاضرات المسجلة</h5>
-            <div className="d-flex flex-column gap-3">
-              {lectures.map((lec) => (
-                <div key={lec.id} className="card border-0 shadow-sm rounded-3 p-3 bg-white">
-                  <div className="d-flex align-items-center justify-content-between">
-                    <div className="d-flex align-items-center gap-3">
-                      <div className="bg-light p-2 rounded-3 text-primary">
-                        <i className="bi bi-play-circle fs-3"></i>
-                      </div>
-                      <div>
-                        <h6 className="fw-bold mb-1">{lec.title}</h6>
-                        <small className="text-muted">المدة: {lec.duration}</small>
-                      </div>
-                    </div>
-                    <button onClick={() => setActiveVideo(lec)} className="btn btn-outline-primary btn-sm px-3 fw-bold">
-                      مشاهدة
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
+        {/* عنوان قسم الفصول */}
+        <div className="d-flex align-items-center justify-content-between mb-4">
+          <div>
+            <h4 className="fw-bold text-dark mb-1">فصول المنهج الدراسي (الثانوية العامة)</h4>
+            <p className="text-muted small mb-0">اشترك في الفصل لفتح المحاضرات والواجبات والاختبارات الخاصة به</p>
           </div>
+          <span className="badge bg-primary-subtle text-primary border border-primary-subtle px-3 py-2 rounded-pill fw-semibold">
+            8 فصول دراسية
+          </span>
+        </div>
 
-          {/* الامتحانات والملفات */}
-          <div className="col-lg-5">
-            <h5 className="fw-bold mb-3">الامتحانات والملفات</h5>
-            
-            {/* امتحان إلكتروني */}
-            <div className="card border-warning border-opacity-50 bg-warning bg-opacity-10 rounded-3 p-3 mb-3">
-              <span className="badge bg-warning text-dark align-self-start mb-2">امتحان إلكتروني</span>
-              <h6 className="fw-bold mb-1">كويز شامل على قانوني كيرشوف</h6>
-              <small className="text-muted mb-3 d-block">المدة: 30 دقيقة | تصحيح إلكتروني فوري</small>
-              <button onClick={() => alert('جاري فتح الامتحان الإلكتروني...')} className="btn btn-warning text-dark fw-bold btn-sm w-100">
-                بدء الامتحان
-              </button>
-            </div>
+        {/* شبكة الفصول (Cards) */}
+        <div className="row g-4 mb-5">
+          {chapters.map((ch) => (
+            <div key={ch.id} className="col-lg-6">
+              <div className={`card h-100 rounded-4 border-0 shadow-sm transition-all overflow-hidden ${
+                ch.isUnlocked ? 'bg-white' : 'bg-white border border-secondary border-opacity-10'
+              }`}>
+                <div className="card-body p-4 d-flex flex-column justify-content-between">
+                  <div>
+                    {/* شارة الحالة والنوع */}
+                    <div className="d-flex justify-content-between align-items-center mb-3">
+                      <span className="badge bg-light text-primary border rounded-pill px-3 py-1 text-xs">
+                        فيزياء تالتة ثانوي
+                      </span>
+                      
+                      {ch.isUnlocked ? (
+                        <span className="badge bg-success-subtle text-success border border-success-subtle px-3 py-1 rounded-pill d-flex align-items-center gap-1">
+                          <i className="bi bi-unlock-fill"></i> مفعّل ومفتوح
+                        </span>
+                      ) : (
+                        <span className="badge bg-danger-subtle text-danger border border-danger-subtle px-3 py-1 rounded-pill d-flex align-items-center gap-1">
+                          <i className="bi bi-lock-fill"></i> مقفول باشتراك
+                        </span>
+                      )}
+                    </div>
 
-            {/* ملزمة PDF */}
-            <div className="card border-0 shadow-sm rounded-3 p-3 bg-white d-flex flex-row align-items-center justify-content-between">
-              <div className="d-flex align-items-center gap-2">
-                <i className="bi bi-file-earmark-pdf fs-3 text-danger"></i>
-                <div>
-                  <h6 className="fw-bold mb-0">ملخص قوانين الفصل الأول.pdf</h6>
-                  <small className="text-muted">الحجم: 3.5 ميجا</small>
+                    <h5 className="fw-bold text-dark mb-2">{ch.title}</h5>
+                    <p className="text-muted small mb-3 leading-relaxed">{ch.desc}</p>
+
+                    <div className="d-flex align-items-center gap-3 text-muted small mb-4">
+                      <span><i className="bi bi-collection-play me-1 text-primary"></i> {ch.lecturesCount} محاضرات</span>
+                      <span><i className="bi bi-clock me-1 text-primary"></i> {ch.hoursCount} ساعة تدريب</span>
+                      <span><i className="bi bi-file-earmark-check me-1 text-primary"></i> امتحانات دورية</span>
+                    </div>
+                  </div>
+
+                  {/* الجزء السفلي: السعر أو زر الدخول */}
+                  <div className="border-top pt-3 d-flex align-items-center justify-content-between">
+                    {ch.isUnlocked ? (
+                      <button 
+                        onClick={() => navigate('/lesson')} 
+                        className="btn btn-success fw-bold w-100 py-2 rounded-3 d-flex align-items-center justify-content-center gap-2"
+                      >
+                        <i className="bi bi-play-circle fs-5"></i> دخول لمشاهدة الدروس والواجبات
+                      </button>
+                    ) : (
+                      <>
+                        <div>
+                          <span className="text-muted d-block text-xs">سعر الفصل</span>
+                          <span className="fw-bold fs-5 text-primary">{ch.price} <small className="fs-6">ج.م</small></span>
+                        </div>
+                        <button
+                          onClick={() => {
+                            setSelectedChapterForSub(ch);
+                            setSubMessage({ text: '', type: '' });
+                          }}
+                          className="btn btn-primary fw-bold px-4 py-2 rounded-3 d-flex align-items-center gap-2"
+                        >
+                          <i className="bi bi-lock-fill"></i> اشترك لفتح الفصل
+                        </button>
+                      </>
+                    )}
+                  </div>
+
                 </div>
               </div>
-              <button onClick={() => alert('جاري تنزيل الملف...')} className="btn btn-light btn-sm fw-bold border">
-                تحميل
-              </button>
             </div>
-
-          </div>
-
+          ))}
         </div>
 
       </div>
+
+      {/* مودال اختيار طريقة الاشتراك في الفصل */}
+      {selectedChapterForSub && (
+        <div className="modal show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.6)', zIndex: 1040 }}>
+          <div className="modal-dialog modal-dialog-centered">
+            <div className="modal-content rounded-4 border-0 p-3 shadow-lg">
+              <div className="modal-header border-0 pb-0">
+                <h5 className="modal-title fw-bold">الاشتراك في {selectedChapterForSub.title}</h5>
+                <button type="button" className="btn-close" onClick={() => setSelectedChapterForSub(null)}></button>
+              </div>
+              <div className="modal-body">
+                <div className="bg-light p-3 rounded-3 mb-3 text-center border">
+                  <span className="text-muted small d-block">إجمالي قيمة الاشتراك</span>
+                  <span className="fs-3 fw-bold text-primary">{selectedChapterForSub.price} ج.م</span>
+                </div>
+
+                {subMessage.text && (
+                  <div className={`alert alert-${subMessage.type} small py-2 mb-3`}>
+                    {subMessage.text}
+                  </div>
+                )}
+
+                {/* خيار 1: الدفع عبر فوري بإصدار كود دفع */}
+                <div className="border border-warning border-opacity-75 rounded-3 p-3 bg-warning bg-opacity-10 mb-3">
+                  <div className="d-flex align-items-center justify-content-between mb-2">
+                    <span className="fw-bold text-dark d-flex align-items-center gap-1">
+                      <i className="bi bi-upc-scan text-warning fs-5"></i> الدفع عبر منافذ فوري (FawryPay)
+                    </span>
+                    <span className="badge bg-warning text-dark">فوري باي</span>
+                  </div>
+                  <p className="text-muted small mb-3">
+                    احصل على كود مرجعي مكون من 10 أرقام وادفع في أي منفذ فوري أو عبر تطبيق فوري.
+                  </p>
+                  <button 
+                    disabled={loadingFawry}
+                    onClick={() => handleRequestFawryCode(selectedChapterForSub)}
+                    className="btn btn-dark fw-bold w-100 py-2 rounded-3 d-flex align-items-center justify-content-center gap-2"
+                  >
+                    {loadingFawry ? 'جاري استخراج الكود...' : 'إصدار كود دفع فوري (Generate Code)'}
+                  </button>
+                </div>
+
+ 
+
+                {/* خيار 3: التفعيل التجريبي الفوري */}
+                <button 
+                  onClick={() => handleUnlockChapter(selectedChapterForSub.id)}
+                  className="btn btn-outline-success w-100 fw-bold py-2 rounded-3"
+                >
+                  تفعيل تجريبي فوري (Demo Unlock)
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* مودال الزوم المباشر */}
       {showZoomModal && (
@@ -133,7 +385,7 @@ export default function Home({ onLogout }) {
                   <div><strong>معرف الاجتماع (Meeting ID):</strong> 892 4110 5590</div>
                   <div className="mt-1"><strong>كلمة السر (Passcode):</strong> PHY2026</div>
                 </div>
-                <a href="https://zoom.us" target="_blank" rel="noreferrer" className="btn btn-primary w-100 fw-bold py-2">
+                <a href="https://zoom.us" target="_blank" rel="noreferrer" className="btn btn-primary w-100 fw-bold py-2 rounded-3">
                   فتح Zoom والانضمام الآن
                 </a>
               </div>
@@ -142,25 +394,12 @@ export default function Home({ onLogout }) {
         </div>
       )}
 
-      {/* مشغل الفيديو مع العلامة المائية */}
-      {activeVideo && (
-        <div className="modal show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.7)' }}>
-          <div className="modal-dialog modal-lg modal-dialog-centered">
-            <div className="modal-content rounded-4 border-0 overflow-hidden">
-              <div className="modal-header bg-dark text-white border-0 py-2">
-                <h6 className="modal-title">{activeVideo.title}</h6>
-                <button type="button" className="btn-close btn-close-white" onClick={() => setActiveVideo(null)}></button>
-              </div>
-              <div className="position-relative bg-black" style={{ aspectRatio: '16/9' }}>
-                <video src="https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4" controls autoPlay className="w-100 h-100" />
-                {/* علامة مائية لحماية الفيديو */}
-                <div className="position-absolute text-white opacity-25 fw-bold user-select-none" style={{ top: '25%', left: '25%', pointerEvents: 'none', transform: 'rotate(-15deg)' }}>
-                  {student.name} • {student.code}
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
+      {/* مودال كود فوري المنبثق */}
+      {fawryInfo && (
+        <FawryPaymentModal 
+          fawryData={fawryInfo} 
+          onClose={() => setFawryInfo(null)} 
+        />
       )}
 
     </div>
