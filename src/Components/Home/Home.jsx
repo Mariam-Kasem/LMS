@@ -99,7 +99,7 @@ export default function Home({ user }) {
 
       // إرسال طلب الاشتراك للباك إند
       const response = await axios.post(
-        `http://localhost:5000/api/chapters/${chapterId}/subscribe`,
+        `https://physics-lms-backend.vercel.app/api/chapters/${chapterId}/subscribe`,
         {},
         {
           headers: {
@@ -143,42 +143,48 @@ export default function Home({ user }) {
   };
   
   // طلب كود فوري من السيرفر
-  const handleRequestFawryCode = async (chapter) => {
-    try {
-      setLoadingFawry(true);
-      const token = localStorage.getItem('token');
-      
-      const response = await axios.post(
-        'http://localhost:5000/api/payment/fawry/create-order',
-        {
-          chapterId: chapter.id,
-          amount: chapter.price
-        },
-        {
-          headers: { Authorization: `Bearer ${token}` }
-        }
-      );
+ const handleRequestFawryCode = async (chapter) => {
+  try {
+    setLoadingFawry(true);
+    const token = localStorage.getItem('token');
+    
+    const response = await axios.post(
+      'https://physics-lms-backend.vercel.app/api/payment/fawry/create-order',
+      {
+        chapterId: chapter.id || chapter._id,
+        amount: chapter.price
+      },
+      {
+        headers: { Authorization: `Bearer ${token}` }
+      }
+    );
 
-      setFawryInfo(response.data);
-      setSelectedChapterForSub(null);
-    } catch (error) {
-      console.error('Fawry order error:', error);
-      // توليد كود محاكاة تجريبي تلقائياً إذا لم يكن مسار السيرفر مجهزاً بعد
-      const fakeRef = Math.floor(1000000000 + Math.random() * 9000000000).toString();
-      const expDate = new Date();
-      expDate.setHours(expDate.getHours() + 48);
+    // دمج البيانات العائدة لضمان تطابقها مع FawryPaymentModal
+    setFawryInfo({
+      ...response.data,
+      referenceNumber: response.data.fawryRefNumber,
+      amount: chapter.price,
+      fawryCode: '788'
+    });
+    setSelectedChapterForSub(null);
+  } catch (error) {
+    console.error('Fawry order error:', error);
+    // توليد كود محاكاة تجريبي تلقائياً إذا فشل الاتصال
+    const fakeRef = Math.floor(1000000000 + Math.random() * 9000000000).toString();
+    const expDate = new Date();
+    expDate.setHours(expDate.getHours() + 48);
 
-      setFawryInfo({
-        referenceNumber: fakeRef,
-        amount: chapter.price,
-        fawryCode: '788',
-        expireDate: expDate.toLocaleDateString('ar-EG') + ' ' + expDate.toLocaleTimeString('ar-EG')
-      });
-      setSelectedChapterForSub(null);
-    } finally {
-      setLoadingFawry(false);
-    }
-  };
+    setFawryInfo({
+      referenceNumber: fakeRef,
+      amount: chapter.price,
+      fawryCode: '788',
+      expireDate: expDate.toLocaleDateString('ar-EG') + ' ' + expDate.toLocaleTimeString('ar-EG')
+    });
+    setSelectedChapterForSub(null);
+  } finally {
+    setLoadingFawry(false);
+  }
+};
 
   return (
     <div dir="rtl" className="bg-light min-vh-100 pb-5">
