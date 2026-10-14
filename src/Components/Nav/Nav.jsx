@@ -8,8 +8,7 @@ export default function Nav({ user, onLogout }) {
     { path: '/home', label: 'الرئيسية' },
     { path: '/lesson', label: 'صفحة الدرس' },
     { path: '/exam', label: 'الامتحان' },
-    { path: '/profile', label: 'الملف الشخصي' },
-    { path: '/admin', label: 'لوحة المدرس' },
+    { path: '/profile', label: 'الملف الشخصي' }
   ];
 
   return (

@@ -2,18 +2,17 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 
+// ⚠️ استبدلي الرابط برابط السيرفر بتاعك الحقيقي
+const BACKEND_URL = 'https://physics-lms-backend.vercel.app';
+
 export default function Profile({ user }) {
   const navigate = useNavigate();
 
-  // جلب النتائج الحقيقية فقط المسجلة في التخزين المحلي بعد أداء الامتحان
-  const savedScores = JSON.parse(localStorage.getItem('physics_exam_scores') || '{}');
-
-  // قراءة بيانات المستخدم الحالي
   const storedUser = JSON.parse(localStorage.getItem('user')) || {};
   const [profileData, setProfileData] = useState(user || storedUser);
   const [loading, setLoading] = useState(false);
 
-  // جلب أحدث بيانات المستخدم من قاعدة البيانات عبر التوكن
+  // 1. جلب أحدث بيانات المستخدم والامتحانات من قاعدة البيانات
   useEffect(() => {
     const fetchUserData = async () => {
       const token = localStorage.getItem('token');
@@ -21,9 +20,10 @@ export default function Profile({ user }) {
 
       try {
         setLoading(true);
-        const res = await axios.get('http://localhost:5000/api/auth/profile', {
+        const res = await axios.get(`${BACKEND_URL}/api/auth/profile`, {
           headers: { Authorization: `Bearer ${token}` }
         });
+
         if (res.data) {
           setProfileData(res.data);
           localStorage.setItem('user', JSON.stringify(res.data));
@@ -38,24 +38,42 @@ export default function Profile({ user }) {
     fetchUserData();
   }, []);
 
-  // تحويل الامتحانات المحفوظة فعلياً لمصفوفة (إن وُجدت)
-  const examKeys = Object.keys(savedScores);
-  const examHistory = examKeys.map((key, index) => {
-    const item = savedScores[key];
-    const percentage = Math.round((item.score / item.total) * 100);
-    let status = 'مقبول';
-    if (percentage >= 85) status = 'ممتاز';
-    else if (percentage >= 75) status = 'جيد جداً';
-    else if (percentage >= 60) status = 'جيد';
+  // 2. قراءة الامتحانات القادمة من الـ Database (MongoDB)
+  // سواء كانت مصفوفة (Array) أو Object مسجل داخل الـ User
+  const rawExams = profileData?.exams || profileData?.examScores || [];
 
-    return {
-      id: key,
-      title: item.title || `اختبار تجريبي #${index + 1}`,
-      date: item.date || 'حديثاً',
-      score: `${item.score} / ${item.total}`,
-      status
-    };
-  });
+  const examHistory = Array.isArray(rawExams)
+    ? rawExams.map((item, index) => {
+        const percentage = Math.round((item.score / item.total) * 100);
+        let status = 'مقبول';
+        if (percentage >= 85) status = 'ممتاز';
+        else if (percentage >= 75) status = 'جيد جداً';
+        else if (percentage >= 60) status = 'جيد';
+
+        return {
+          id: item.examId || index,
+          title: item.examTitle || item.title || `اختبار تجريبي #${index + 1}`,
+          date: item.date ? new Date(item.date).toLocaleDateString('ar-EG') : 'حديثاً',
+          score: `${item.score} / ${item.total}`,
+          status
+        };
+      })
+    : Object.keys(rawExams).map((key, index) => {
+        const item = rawExams[key];
+        const percentage = Math.round((item.score / item.total) * 100);
+        let status = 'مقبول';
+        if (percentage >= 85) status = 'ممتاز';
+        else if (percentage >= 75) status = 'جيد جداً';
+        else if (percentage >= 60) status = 'جيد';
+
+        return {
+          id: key,
+          title: item.title || `اختبار #${index + 1}`,
+          date: item.date || 'حديثاً',
+          score: `${item.score} / ${item.total}`,
+          status
+        };
+      });
 
   const studentData = {
     name: profileData?.name || 'مريم قاسم الدسوقي',
@@ -130,7 +148,7 @@ export default function Profile({ user }) {
           </div>
         </div>
 
-        {/* كشف درجات الامتحانات (ديناميكي) */}
+        {/* كشف درجات الامتحانات (ديناميكي من الداتابيز) */}
         <div className="card border-0 shadow-sm rounded-4 p-4 bg-white">
           <div className="d-flex justify-content-between align-items-center mb-3">
             <h5 className="fw-bold mb-0 text-dark">سجل درجات الامتحانات والواجبات</h5>
@@ -167,7 +185,6 @@ export default function Profile({ user }) {
               </table>
             </div>
           ) : (
-            /* حالة عدم وجود أي امتحانات بعد */
             <div className="text-center py-5 border rounded-3 bg-light bg-opacity-50">
               <i className="bi bi-journal-x fs-1 text-muted d-block mb-2"></i>
               <h6 className="fw-bold text-dark mb-1">لم تقم بأداء أي امتحانات حتى الآن</h6>

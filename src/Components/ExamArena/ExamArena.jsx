@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 
+// أساس رابط الـ API (يأخذ من VITE_API_URL إن وُجد، أو يستخدم المسار النسبي المباشر لـ Vercel)
+const API_BASE_URL = 'https://physics-lms-backend.vercel.app';
 // قائمة الامتحانات المتاحة والمغلقة
 const EXAMS_DATABASE = [
   {
@@ -61,12 +63,44 @@ export default function ExamArena({ onExit }) {
   const [timeLeft, setTimeLeft] = useState(0);
   const [selectedAnswers, setSelectedAnswers] = useState({});
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [examScores, setExamScores] = useState({});
 
-  // استرجاع الدرجات السابقة من التخزين المحلي
-  const [examScores, setExamScores] = useState(() => {
-    const saved = localStorage.getItem('physics_exam_scores');
-    return saved ? JSON.parse(saved) : {};
-  });
+  // 1. جلب الدرجات السابقة من الباك إند عند فتح الصفحة
+  useEffect(() => {
+    const fetchUserScores = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        if (!token) return;
+
+        const response = await fetch(`${API_BASE_URL}/api/auth/profile`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          // تحويل قائمة الامتحانات القادمة من MongoDB لشكل Object لتسهيل القراءة في الواجهة
+          if (data && Array.isArray(data.exams)) {
+            const mappedScores = {};
+            data.exams.forEach((item) => {
+              mappedScores[item.examId] = {
+                score: item.score,
+                total: item.total,
+                title: item.title,
+                date: item.date,
+              };
+            });
+            setExamScores(mappedScores);
+          }
+        }
+      } catch (error) {
+        console.error('فشل جلب النتائج من السيرفر:', error);
+      }
+    };
+
+    fetchUserScores();
+  }, []);
 
   // بدء امتحان محدد
   const handleStartExam = (exam) => {
@@ -113,18 +147,51 @@ export default function ExamArena({ onExit }) {
     return score;
   };
 
-  const handleSubmit = () => {
+  // 2. إرسال الدرجة للباك إند وحفظها في MongoDB
+  const handleSubmit = async () => {
     const finalScore = calculateScore();
+    const totalQuestions = activeExam.questions.length;
+
+    // تحديث الواجهة فوراً
     const newScores = {
       ...examScores,
       [activeExam.id]: {
         score: finalScore,
-        total: activeExam.questions.length,
+        total: totalQuestions,
+        title: activeExam.title,
       },
     };
     setExamScores(newScores);
-    localStorage.setItem('physics_exam_scores', JSON.stringify(newScores));
     setIsSubmitted(true);
+
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        console.warn('لم يتم العثور على توكن لتسجيل الامتحان.');
+        return;
+      }
+
+      const response = await fetch(`${API_BASE_URL}/api/auth/submit-exam`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          examId: activeExam.id,
+          examTitle: activeExam.title,
+          score: finalScore,
+          total: totalQuestions,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error('فشل حفظ الامتحان في السيرفر:', errorData.message);
+      }
+    } catch (error) {
+      console.error('فشل إرسال النتيجة للباك إند:', error);
+    }
   };
 
   // التعامل مع الرجوع الآمن
@@ -141,7 +208,6 @@ export default function ExamArena({ onExit }) {
     }
   };
 
-  // عدد الأسئلة المجاب عنها
   const answeredCount = Object.keys(selectedAnswers).length;
 
   // ================= 1. شاشة قائمة الامتحانات =================
