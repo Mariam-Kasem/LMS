@@ -42,7 +42,7 @@ export default function Auth({ onAuthSuccess }) {
   const [mode, setMode] = useState('login'); // 'login' | 'register'
 
   // بيانات تسجيل الدخول
-  const [role, setRole] = useState('student');
+  const [role, setRole] = useState('student'); // 'student' | 'parent' | 'teacher'
   const [loginPhone, setLoginPhone] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
   const [showLoginPass, setShowLoginPass] = useState(false);
@@ -68,7 +68,7 @@ export default function Auth({ onAuthSuccess }) {
   const validatePhone = (num) => /^01[0125][0-9]{8}$/.test(num.trim());
 
   // معالجة تسجيل الدخول
-const handleLoginSubmit = async (e) => {
+  const handleLoginSubmit = async (e) => {
     e.preventDefault();
     setError('');
 
@@ -82,21 +82,42 @@ const handleLoginSubmit = async (e) => {
     }
 
     setLoading(true);
-    try {
-      const response = await axios.post('https://physics-lms-backend.vercel.app/api/auth/login', {
+   try {
+      const response = await axios.post('https://physics-lms-backend.vercel.app/api/auth/login', { 
         phone: loginPhone,
         password: loginPassword,
       });
 
       const userData = response.data;
-      // حفظ بيانات الطالب والـ Token في الـ LocalStorage للبقاء مسجلاً
+
+      // 1. إذا كان التبويب المختار هو "المعلم" ولكن الحساب ليس أدمن
+      if (role === 'teacher' && userData.role !== 'admin') {
+        setError('⛔ عفواً، هذا الحساب من صلاحيات المعلم فقط. يرجى الدخول من تبويب طالب.');
+        setLoading(false);
+        return; // إيقاف العملية ومنع حفظ التوكن
+      }
+
+      // 2. إذا كان الحساب معلماً لكنه يحاول الدخول من تبويب الطالب (اختياري لتنظيم الدخول)
+      if (role === 'student' && userData.role === 'admin') {
+        setError('👨‍🏫 أهلاً يا أستاذنا، يرجى تسجيل الدخول من تبويب "المعلم".');
+        setLoading(false);
+        return;
+      }
+
+      // إذا كانت الرتبة مطابقة: حفظ البيانات والدخول
       localStorage.setItem('user', JSON.stringify(userData));
       localStorage.setItem('token', userData.token);
 
       if (onAuthSuccess) {
         onAuthSuccess(userData);
       }
-      navigate('/home');
+
+      if (userData.role === 'admin') {
+        navigate('/admin');
+      } else {
+        navigate('/home');
+      }
+
     } catch (err) {
       const msg = err.response?.data?.message || 'تعذر تسجيل الدخول، يرجى التأكد من البيانات أو تشغيل السيرفر.';
       setError(msg);
@@ -106,7 +127,7 @@ const handleLoginSubmit = async (e) => {
   };
 
   // معالجة إنشاء الحساب
- const handleRegisterSubmit = async (e) => {
+  const handleRegisterSubmit = async (e) => {
     e.preventDefault();
     setError('');
 
@@ -234,17 +255,21 @@ const handleLoginSubmit = async (e) => {
         {/* ================= فورم تسجيل الدخول ================= */}
         {mode === 'login' ? (
           <>
+            {/* التبديل بين: طالب | ولي أمر | المعلم */}
             <div className="row g-2 bg-light p-1 rounded-3 border mb-4">
               {[
                 { id: 'student', label: 'طالب' },
                 { id: 'parent', label: 'ولي أمر' },
+                { id: 'teacher', label: 'المعلم 👨‍🏫' },
               ].map((item) => (
-                <div key={item.id} className="col-6">
+                <div key={item.id} className="col-4">
                   <button
                     type="button"
                     onClick={() => { setRole(item.id); setError(''); }}
-                    className={`btn w-100 py-2 fw-bold rounded-3 ${
-                      role === item.id ? 'btn-primary shadow-sm' : 'text-secondary border-0'
+                    className={`btn w-100 py-2 fw-bold rounded-3 small ${
+                      role === item.id 
+                        ? item.id === 'teacher' ? 'btn-dark text-warning shadow-sm' : 'btn-primary shadow-sm' 
+                        : 'text-secondary border-0'
                     }`}
                   >
                     {item.label}
@@ -255,7 +280,9 @@ const handleLoginSubmit = async (e) => {
 
             <form onSubmit={handleLoginSubmit} className="d-flex flex-column gap-3">
               <div>
-                <label className="form-label small fw-bold text-secondary mb-1">رقم الهاتف المسجل</label>
+                <label className="form-label small fw-bold text-secondary mb-1">
+                  {role === 'teacher' ? 'رقم هاتف المعلم' : 'رقم الهاتف المسجل'}
+                </label>
                 <input
                   type="tel"
                   placeholder="مثال: ٠١٠١٢٣٤٥٦٧٨"
@@ -268,13 +295,15 @@ const handleLoginSubmit = async (e) => {
               <div>
                 <div className="d-flex justify-content-between align-items-center mb-1">
                   <label className="form-label small fw-bold text-secondary mb-0">كلمة المرور</label>
-                  <button 
-                    type="button"
-                    onClick={() => alert('يرجى التواصل مع المساعد أو الدعم الفني لاستعادة كلمة المرور.')}
-                    className="btn btn-link p-0 small text-primary text-decoration-none fw-semibold"
-                  >
-                    نسيت كلمة المرور؟
-                  </button>
+                  {role !== 'teacher' && (
+                    <button 
+                      type="button"
+                      onClick={() => alert('يرجى التواصل مع المساعد أو الدعم الفني لاستعادة كلمة المرور.')}
+                      className="btn btn-link p-0 small text-primary text-decoration-none fw-semibold"
+                    >
+                      نسيت كلمة المرور؟
+                    </button>
+                  )}
                 </div>
                 
                 <div className="input-group">
@@ -308,8 +337,14 @@ const handleLoginSubmit = async (e) => {
                 </label>
               </div>
 
-              <button type="submit" disabled={loading} className="btn btn-primary btn-lg rounded-3 fw-bold shadow-sm mt-2">
-                {loading ? 'جاري التحقق...' : 'دخول إلى المنصة'}
+              <button 
+                type="submit" 
+                disabled={loading} 
+                className={`btn btn-lg rounded-3 fw-bold shadow-sm mt-2 ${
+                  role === 'teacher' ? 'btn-dark text-warning' : 'btn-primary'
+                }`}
+              >
+                {loading ? 'جاري التحقق...' : (role === 'teacher' ? 'دخول لوحة تحكم المعلم' : 'دخول إلى المنصة')}
               </button>
             </form>
 

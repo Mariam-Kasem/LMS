@@ -7,8 +7,8 @@ import Home from './Components/Home/Home';
 import LessonView from './Components/LessonView/LessonView';
 import ExamArena from './Components/ExamArena/ExamArena';
 import Profile from './Components/Profile/Profile';
-import Dashboard from './Components/Dashboard/Dashboard';
 import Footer from './Components/Footer/Footer';
+import Admin from './Components/Admin/Admin';
 
 // مكون تغليف الصفحة الرئيسية والمسارات المحمية
 function MainLayout({ user, onLogout }) {
@@ -60,9 +60,16 @@ function MainLayout({ user, onLogout }) {
             element={<Profile onBack={() => navigate('/home')} />} 
           />
 
+          {/* مسار الأدمن مخصص للمستخدمين الذين يملكون رتبة admin فقط */}
           <Route 
             path="/admin" 
-            element={<Dashboard onExit={() => navigate('/home')} />} 
+            element={
+              user?.role === 'admin' ? (
+                <Admin onExit={() => navigate('/home')} />
+              ) : (
+                <Navigate to="/home" replace />
+              )
+            } 
           />
 
           {/* التوجيه الافتراضي لأي مسار غير معروف */}

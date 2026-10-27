@@ -1,21 +1,21 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-// أساس رابط الـ API (يأخذ من VITE_API_URL إن وُجد، أو يستخدم المسار النسبي المباشر لـ Vercel)
 const API_BASE_URL = 'https://physics-lms-backend.vercel.app';
-// قائمة الامتحانات المتاحة والمغلقة
+
+// قائمة الامتحانات كأمثلة ونموذج للبيانات
 const EXAMS_DATABASE = [
   {
     id: 'exam-1',
     title: 'امتحان الفيزياء الدوري • قوانين الدوائر الكهربية',
     topic: 'الفصل الأول: التيار الكهربي وقانون أوم',
     durationMinutes: 10,
-    status: 'open',
-    unlockDate: 'متاح الآن',
+    isAutoTimed: false,
     questions: [
       {
         id: 1,
         question: 'في الدائرة الموضحة، إذا كانت المقاومة الكلية 5 أوم وفرق الجهد الكلي 20 فولت، ما هي شدة التيار الكلي المار؟',
+        image: '',
         options: ['2 أمبير', '4 أمبير', '10 أمبير', '100 أمبير'],
         correct: 1,
         hint: 'I = V / R = 20 / 5 = 4A'
@@ -23,6 +23,7 @@ const EXAMS_DATABASE = [
       {
         id: 2,
         question: 'قانون كيرشوف الأول يعتبر تطبيقاً مباشراً لمبدأ بقاء:',
+        image: '',
         options: ['الطاقة', 'الشحنة الكهربية', 'كمية الحركة', 'الكتلة'],
         correct: 1,
         hint: 'مجموع الشحنات الداخلة في نقطة تفرع يساوي مجموع الشحنات الخارجة منها.'
@@ -30,6 +31,7 @@ const EXAMS_DATABASE = [
       {
         id: 3,
         question: 'سلك مستقيم مقاومته R، تم سحبه بانتظام بحيث زاد طوله إلى الضعف، تصبح مقاومته الجديدة:',
+        image: '',
         options: ['R/2', '2R', '4R', 'R'],
         correct: 2,
         hint: 'عند سحب السلك، زيادة الطول للضعف تعني نقص مساحة المقطع للنصف، فتتضاعف المقاومة أربع مرات (4R).'
@@ -41,8 +43,9 @@ const EXAMS_DATABASE = [
     title: 'كويز التأثير المغناطيسي وأجهزة القياس',
     topic: 'الفصل الثاني: الفيض وقوة لورنتز',
     durationMinutes: 15,
-    status: 'locked',
-    unlockDate: 'يفتح الثلاثاء القادم 6:00 مساءً (بعد الحصة)',
+    isAutoTimed: true,
+    availableFrom: '2026-10-27T18:00:00',
+    availableTo: '2026-10-27T23:59:59',
     questions: []
   },
   {
@@ -50,8 +53,9 @@ const EXAMS_DATABASE = [
     title: 'الامتحان الشامل على الباب الأول والثاني',
     topic: 'مراجعة شاملة نصف المنهج',
     durationMinutes: 30,
-    status: 'locked',
-    unlockDate: 'مغلق حتى اجتياز الكويزات السابقة',
+    isAutoTimed: true,
+    availableFrom: '2026-11-01T10:00:00',
+    availableTo: '2026-11-01T18:00:00',
     questions: []
   }
 ];
@@ -65,7 +69,36 @@ export default function ExamArena({ onExit }) {
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [examScores, setExamScores] = useState({});
 
-  // 1. جلب الدرجات السابقة من الباك إند عند فتح الصفحة
+  // التحقق من حالة وموعد الامتحان
+  const checkExamStatus = (exam) => {
+    if (!exam.isAutoTimed) {
+      return { canEnter: true, status: 'open', message: 'متاح للحل الآن' };
+    }
+
+    const now = new Date();
+    const from = new Date(exam.availableFrom);
+    const to = new Date(exam.availableTo);
+
+    if (now < from) {
+      return {
+        canEnter: false,
+        status: 'upcoming',
+        message: `⏳ يبدأ في: ${from.toLocaleDateString('ar-EG')} الساعة ${from.toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' })}`
+      };
+    }
+
+    if (now > to) {
+      return {
+        canEnter: false,
+        status: 'expired',
+        message: '⛔ انتهى وقت هذا الامتحان ولم يعد متاحاً للتسليم.'
+      };
+    }
+
+    return { canEnter: true, status: 'active', message: '🟢 متاح للبدء الآن' };
+  };
+
+  // جلب الدرجات السابقة من الباك إند
   useEffect(() => {
     const fetchUserScores = async () => {
       try {
@@ -80,7 +113,6 @@ export default function ExamArena({ onExit }) {
 
         if (response.ok) {
           const data = await response.json();
-          // تحويل قائمة الامتحانات القادمة من MongoDB لشكل Object لتسهيل القراءة في الواجهة
           if (data && Array.isArray(data.exams)) {
             const mappedScores = {};
             data.exams.forEach((item) => {
@@ -102,9 +134,11 @@ export default function ExamArena({ onExit }) {
     fetchUserScores();
   }, []);
 
-  // بدء امتحان محدد
+  // بدء الامتحان
   const handleStartExam = (exam) => {
-    if (exam.status === 'locked') return;
+    const status = checkExamStatus(exam);
+    if (!status.canEnter) return;
+
     setActiveExam(exam);
     setTimeLeft(exam.durationMinutes * 60);
     setSelectedAnswers({});
@@ -147,12 +181,11 @@ export default function ExamArena({ onExit }) {
     return score;
   };
 
-  // 2. إرسال الدرجة للباك إند وحفظها في MongoDB
+  // إرسال الدرجة للباك إند
   const handleSubmit = async () => {
     const finalScore = calculateScore();
     const totalQuestions = activeExam.questions.length;
 
-    // تحديث الواجهة فوراً
     const newScores = {
       ...examScores,
       [activeExam.id]: {
@@ -166,12 +199,9 @@ export default function ExamArena({ onExit }) {
 
     try {
       const token = localStorage.getItem('token');
-      if (!token) {
-        console.warn('لم يتم العثور على توكن لتسجيل الامتحان.');
-        return;
-      }
+      if (!token) return;
 
-      const response = await fetch(`${API_BASE_URL}/api/auth/submit-exam`, {
+      await fetch(`${API_BASE_URL}/api/auth/submit-exam`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -184,17 +214,11 @@ export default function ExamArena({ onExit }) {
           total: totalQuestions,
         }),
       });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        console.error('فشل حفظ الامتحان في السيرفر:', errorData.message);
-      }
     } catch (error) {
       console.error('فشل إرسال النتيجة للباك إند:', error);
     }
   };
 
-  // التعامل مع الرجوع الآمن
   const handleSafeExit = () => {
     if (activeExam && !isSubmitted) {
       if (window.confirm('هل أنت متأكد من الخروج؟ سيتم إلغاء تقدمك في هذا الامتحان!')) {
@@ -220,7 +244,7 @@ export default function ExamArena({ onExit }) {
             <div className="d-flex flex-wrap justify-content-between align-items-center gap-3">
               <div>
                 <h4 className="fw-bold mb-1 text-dark">📋 ساحة الاختبارات والتقييم الدوري</h4>
-                <p className="text-secondary small mb-0">اختر الاختبار المتاح لك للبدء فوراً، أو انتظر المواعيد المحددة للامتحانات المغلقة.</p>
+                <p className="text-secondary small mb-0">اختر الاختبار المتاح لك للبدء فوراً، أو انتظر المواعيد المحددة للامتحانات المجدولة.</p>
               </div>
               <button onClick={() => navigate('/home')} className="btn btn-outline-secondary btn-sm px-3 rounded-3 fw-bold">
                 ← العودة للرئيسية
@@ -231,7 +255,8 @@ export default function ExamArena({ onExit }) {
           <div className="row g-3">
             {EXAMS_DATABASE.map((exam) => {
               const completedData = examScores[exam.id];
-              const isLocked = exam.status === 'locked' && !completedData;
+              const timeStatus = checkExamStatus(exam);
+              const isLocked = !timeStatus.canEnter && !completedData;
 
               return (
                 <div key={exam.id} className="col-12">
@@ -246,17 +271,17 @@ export default function ExamArena({ onExit }) {
                               ? 'bg-secondary-subtle text-secondary border border-secondary-subtle' 
                               : 'bg-primary-subtle text-primary border border-primary-subtle'
                           }`}>
-                            {completedData ? '✓ تم الانتهاء' : isLocked ? '🔒 مغلق مؤقتاً' : '⚡ متاح للبدء'}
+                            {completedData ? '✓ تم الانتهاء' : isLocked ? '🔒 مغلق' : '⚡ متاح للبدء'}
                           </span>
                           <small className="text-muted">{exam.durationMinutes} دقيقة • {exam.questions.length || '—'} أسئلة</small>
                         </div>
 
                         <h5 className="fw-bold text-dark mb-1">{exam.title}</h5>
                         <p className="text-secondary small mb-1">{exam.topic}</p>
-                        
-                        {isLocked && (
-                          <div className="small text-danger fw-semibold mt-2">
-                            ⏰ {exam.unlockDate}
+
+                        {!completedData && (
+                          <div className={`small fw-semibold mt-2 ${timeStatus.canEnter ? 'text-success' : 'text-danger'}`}>
+                            {timeStatus.message}
                           </div>
                         )}
 
@@ -275,16 +300,15 @@ export default function ExamArena({ onExit }) {
                           >
                             إعادة المحاولة
                           </button>
-                        ) : isLocked ? (
-                          <button disabled className="btn btn-light border px-4 py-2 rounded-3 text-muted fw-bold">
-                            غير متاح الآن
-                          </button>
                         ) : (
                           <button
+                            disabled={!timeStatus.canEnter}
                             onClick={() => handleStartExam(exam)}
-                            className="btn btn-primary px-4 py-2 rounded-3 fw-bold shadow-sm"
+                            className={`btn px-4 py-2 rounded-3 fw-bold shadow-sm ${
+                              timeStatus.canEnter ? 'btn-primary' : 'btn-light border text-muted'
+                            }`}
                           >
-                            بدء الامتحان الآن
+                            {timeStatus.canEnter ? 'بدء الامتحان الآن' : 'غير متاح حالياً'}
                           </button>
                         )}
                       </div>
@@ -327,7 +351,6 @@ export default function ExamArena({ onExit }) {
             </div>
           </div>
 
-          {/* شريط تقدم الحل */}
           {!isSubmitted && (
             <div className="progress mt-2" style={{ height: '6px' }}>
               <div 
@@ -349,11 +372,23 @@ export default function ExamArena({ onExit }) {
           </div>
         )}
 
-        {/* الأسئلة */}
+        {/* الأسئلة ودعم صور الفيزياء */}
         <div className="d-flex flex-column gap-3 mb-4">
           {activeExam.questions.map((q, idx) => (
             <div key={q.id} className="card border-0 shadow-sm rounded-4 p-4 bg-white">
               <h6 className="fw-bold text-dark mb-3">س{idx + 1}: {q.question}</h6>
+
+              {/* إظهار صورة المسألة أو الدائرة الكهربية إن وُجدت */}
+              {q.image && (
+                <div className="text-center my-3 p-2 bg-light rounded-3 border">
+                  <img 
+                    src={q.image} 
+                    alt={`رسمة توضيحية للسؤال ${idx + 1}`} 
+                    className="img-fluid rounded border shadow-sm"
+                    style={{ maxHeight: '250px', objectFit: 'contain' }}
+                  />
+                </div>
+              )}
               
               <div className="d-flex flex-column gap-2">
                 {q.options.map((opt, oIdx) => {
@@ -381,7 +416,7 @@ export default function ExamArena({ onExit }) {
                 })}
               </div>
 
-              {isSubmitted && (
+              {isSubmitted && q.hint && (
                 <div className="mt-3 p-3 bg-light rounded-3 small text-secondary">
                   <strong>💡 خطوات الحل:</strong> {q.hint}
                 </div>
@@ -390,7 +425,7 @@ export default function ExamArena({ onExit }) {
           ))}
         </div>
 
-        {/* زر الإجراء */}
+        {/* أزرار الإجراء */}
         {!isSubmitted ? (
           <button 
             onClick={() => {
