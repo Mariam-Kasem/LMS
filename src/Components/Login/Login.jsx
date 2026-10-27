@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 
+const API_BASE_URL = 'https://physics-lms-backend.vercel.app';
+
 // أيقونات SVG
 const AtomIcon = () => (
   <svg 
@@ -82,29 +84,29 @@ export default function Auth({ onAuthSuccess }) {
     }
 
     setLoading(true);
-   try {
-      const response = await axios.post('https://physics-lms-backend.vercel.app/api/auth/login', { 
+    try {
+      const response = await axios.post(`${API_BASE_URL}/api/auth/login`, { 
         phone: loginPhone,
         password: loginPassword,
       });
 
       const userData = response.data;
 
-      // 1. إذا كان التبويب المختار هو "المعلم" ولكن الحساب ليس أدمن
+      // إذا كان التبويب المختار هو "المعلم" ولكن الحساب ليس أدمن
       if (role === 'teacher' && userData.role !== 'admin') {
-        setError('⛔ عفواً، هذا الحساب من صلاحيات المعلم فقط. يرجى الدخول من تبويب طالب.');
+        setError('⛔ عفواً، هذا الحساب ليس له صلاحيات المعلم. يرجى الدخول من تبويب طالب.');
         setLoading(false);
-        return; // إيقاف العملية ومنع حفظ التوكن
+        return;
       }
 
-      // 2. إذا كان الحساب معلماً لكنه يحاول الدخول من تبويب الطالب (اختياري لتنظيم الدخول)
+      // إذا كان الحساب معلماً لكنه يحاول الدخول من تبويب الطالب
       if (role === 'student' && userData.role === 'admin') {
         setError('👨‍🏫 أهلاً يا أستاذنا، يرجى تسجيل الدخول من تبويب "المعلم".');
         setLoading(false);
         return;
       }
 
-      // إذا كانت الرتبة مطابقة: حفظ البيانات والدخول
+      // حفظ الجلسة
       localStorage.setItem('user', JSON.stringify(userData));
       localStorage.setItem('token', userData.token);
 
@@ -170,7 +172,8 @@ export default function Auth({ onAuthSuccess }) {
 
     setLoading(true);
     try {
-      await axios.post('http://localhost:5000/api/auth/register', {
+      // تم التعديل إلى رابط Vercel بدلاً من localhost:5000
+      await axios.post(`${API_BASE_URL}/api/auth/register`, {
         name: fullName,
         phone: studentPhone,
         parentPhone,
@@ -179,7 +182,7 @@ export default function Auth({ onAuthSuccess }) {
         password,
       });
 
-      alert('تم إنشاء الحساب بنجاح في قاعدة البيانات! يمكنك الآن تسجيل الدخول.');
+      alert('تم إنشاء الحساب بنجاح! يمكنك الآن تسجيل الدخول.');
       setMode('login');
       setLoginPhone(studentPhone);
       setFormData({
@@ -252,10 +255,9 @@ export default function Auth({ onAuthSuccess }) {
           </div>
         )}
 
-        {/* ================= فورم تسجيل الدخول ================= */}
+        {/* فورم تسجيل الدخول */}
         {mode === 'login' ? (
           <>
-            {/* التبديل بين: طالب | ولي أمر | المعلم */}
             <div className="row g-2 bg-light p-1 rounded-3 border mb-4">
               {[
                 { id: 'student', label: 'طالب' },
@@ -360,9 +362,8 @@ export default function Auth({ onAuthSuccess }) {
             </div>
           </>
         ) : (
-          /* ================= فورم إنشاء حساب جديد ================= */
+          /* فورم إنشاء حساب جديد */
           <form onSubmit={handleRegisterSubmit} className="d-flex flex-column gap-3">
-            
             <div>
               <label className="form-label small fw-bold text-secondary mb-1">اسم الطالب (ثلاثي أو رباعي) *</label>
               <input
